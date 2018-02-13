@@ -45,11 +45,11 @@ void labelVideosForLeakDetection(const ::std::string& path_to_video);
 void processKeyboardInput(char key, Params& params);
 void CallBackFunc(int event, int x, int y, int flags, void* userdata);
 void renderLeak(::cv::Mat& img, MouseCallbackData& data);
-void saveLabels(MouseCallbackData& data, ::std::ostream& os);
+void saveLabels(MouseCallbackData& data, ::std::ostream& os, ::std::vector<double>& robotData);
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	::std::string filename = "Z:/Public/Data/Cardioscopy_project/2018-02-06_bypass_cardioscopy/Videos_2018-02-06/2018-02-06_13-12-43";
+	::std::string filename = "Y:/Public/Data/Cardioscopy_project/2018-02-06_bypass_cardioscopy/Videos_2018-02-06/2018-02-06_13-12-43";
 	if (argc > 1)
 	{
 		::std::wstring test(argv[1]); 
@@ -65,6 +65,10 @@ int _tmain(int argc, _TCHAR* argv[])
 void labelVideosForLeakDetection(const ::std::string& path_to_video)
 {
 	::std::cout << "Labelling video: " << path_to_video << ::std::endl;
+
+	::std::ofstream os(path_to_video + "/labels.txt");
+
+	::std::vector<::std::string> robotData = ReadLinesFromFile(path_to_video + "/data.txt");
 
 	::std::vector<::std::string> imList;
 	int count = getImList(imList, checkPath(path_to_video + "/") );
@@ -92,16 +96,21 @@ void labelVideosForLeakDetection(const ::std::string& path_to_video)
 			renderLeak(img, data);
 
 		::cv::imshow("Display", img);
-	
-		saveLabels(data, ::std::cout);
+			
+		saveLabels(data, os, DoubleVectorFromString(robotData[i], ','));
 
 		char key = ::cv::waitKey(10 * 1.0/params.speed * static_cast<int>(!params.pause));
 		processKeyboardInput(key, params);
 
 
 		if (params.quit)
+		{
+			os.close();
 			return;
+		}
 	}
+
+	os.close();
 }
 
 void processKeyboardInput(char key, Params& params)
@@ -160,10 +169,15 @@ void renderLeak(::cv::Mat& img, MouseCallbackData& data)
 	::cv::circle(img, ::cv::Point(data.centroid[0], data.centroid[1]), 1, ::cv::Scalar(0, 0, 255), -1);
 }
 
-void saveLabels(MouseCallbackData& data, ::std::ostream& os)
+void saveLabels(MouseCallbackData& data, ::std::ostream& os, ::std::vector<double>& robotVel)
 {
 	if (data.leakInFieldOfView)
-		os << data.imageId << ", 1, " << data.centroid[0] << ", " << data.centroid[1] << ::std::endl;
+		os << data.imageId << ", 1, " << data.centroid[0] << ", " << data.centroid[1];
 	else
-		os << data.imageId << ", 0, " << -1 << ", " << -1 << ::std::endl;
+		os << data.imageId << ", 0, " << -1 << ", " << -1;
+
+	for (int i = 0; i < 5; ++i)
+		os << ", " << robotVel[i];
+
+	os << ::std::endl;
 }
